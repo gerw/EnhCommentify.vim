@@ -507,7 +507,7 @@ function EnhancedCommentify(overrideEL, action, ...)
 	endwhile
     endif
 
-    if a:0 == 2
+	if a:0 == 2  &&  a:1 != a:2
 	let s:startBlock = a:1
 	let s:i = a:1
 	let s:endBlock = a:2
@@ -554,6 +554,7 @@ function EnhancedCommentify(overrideEL, action, ...)
 	" Don't comment empty lines.
 	if lineString !~ "^\s*$"
 		    \ || b:ECemptyLines =~? 'ye*s*'
+			if s:inBlock == 1
 	    if b:ECcommentClose != ''
 		let lineString = s:CommentifyMultiPart(lineString,
 			    \ b:ECcommentOpen,
@@ -563,6 +564,20 @@ function EnhancedCommentify(overrideEL, action, ...)
 	    	let lineString = s:CommentifySinglePart(lineString,
 			    \ b:ECcommentOpen)
 	    endif
+			else
+				if b:ECcommentSingle != ''
+					let lineString = s:CommentifySinglePart(lineString,
+								\ b:ECcommentSingle)
+				elseif b:ECcommentClose != ''
+					let lineString = s:CommentifyMultiPart(lineString,
+								\ b:ECcommentOpen,
+								\ b:ECcommentClose,
+								\ b:ECcommentMiddle)
+				else
+					let lineString = s:CommentifySinglePart(lineString,
+								\ b:ECcommentOpen)
+				endif
+			endif
 	endif
 
 	" Revert the above: If the line is "empty" and we
@@ -692,6 +707,7 @@ function s:GetFileTypeSettings(ft)
     " If we find nothing appropriate this is the default.
     let b:ECcommentOpen = ''
     let b:ECcommentClose = ''
+	let b:ECcommentSingle = ''
 
     if exists("g:EnhCommentifyCallbackExists")
 	call EnhCommentifyCallback(fileType)
@@ -703,18 +719,12 @@ function s:GetFileTypeSettings(ft)
 	endif
     endif
 
-    " I learned about the commentstring option. Let's use it.
-    " For now we ignore it, if it is "/*%s*/". This is the
-    " default. We cannot check wether this is default or C or
-    " something other like CSS, etc. We have to wait, until the
-    " filetypes adopt this option.
-    if &commentstring != "/*%s*/" && !b:ECuseSyntax
-	let b:ECcommentOpen =
-		    \ substitute(&commentstring, '%s.*', "", "")
-	let b:ECcommentClose =
-		    \ substitute(&commentstring, '.*%s', "", "")
     " Multipart comments:
-    elseif fileType =~ '^\(c\|b\|css\|csc\|cupl\|indent\|jam\|lex\|lifelines\|'.
+	if fileType =~ '^\(c\|cpp\|h\|hpp\|java\|php\|javascript\|asy\)$'
+		let b:ECcommentOpen = '/*'
+		let b:ECcommentClose = '*/'
+		let b:ECcommentSingle = '//'
+	elseif fileType =~ '^\(b\|css\|csc\|cupl\|indent\|jam\|lex\|lifelines\|'.
 		\ 'lite\|nqc\|phtml\|progress\|rexx\|rpl\|sas\|sdl\|sl\|'.
 		\ 'strace\|xpm\|yacc\)$'
 	let b:ECcommentOpen = '/*'
@@ -754,8 +764,8 @@ function s:GetFileTypeSettings(ft)
 	let b:ECcommentOpen = 'comment = "'
 	let b:ECcommentClose = '"'
     " Singlepart comments:
-    elseif fileType =~ '^\(ox\|cpp\|php\|java\|verilog\|acedb\|ch\|clean\|'.
-		\ 'clipper\|cs\|dot\|dylan\|hercules\|idl\|ishd\|javascript\|'.
+	elseif fileType =~ '^\(ox\|verilog\|acedb\|ch\|clean\|'.
+				\ 'clipper\|cs\|dot\|dylan\|hercules\|idl\|ishd\|'.
 		\ 'kscript\|mel\|named\|openroad\|pccts\|pfmain\|pike\|'.
 		\ 'pilrc\|plm\|pov\|rc\|scilab\|specman\|tads\|tsalt\|uc\|'.
 		\ 'xkb\)$'
@@ -771,7 +781,7 @@ function s:GetFileTypeSettings(ft)
 		\ 'wvdial\|z8a\)$'
 	let b:ECcommentOpen = ';'
 	let b:ECcommentClose = ''
-    elseif fileType =~ '^\(python\|perl\|[^w]*sh$\|tcl\|jproperties\|make\|'.
+	elseif fileType =~ '^\(python\|perl\|[^w]*sh$\|tcl\|jproperties\|c\?make\|'.
 		\ 'robots\|apache\|apachestyle\|awk\|bc\|cfg\|cl\|conf\|'.
 		\ 'crontab\|diff\|ecd\|elmfilt\|eterm\|expect\|exports\|'.
 		\ 'fgl\|fvwm\|gdb\|gnuplot\|gtkrc\|hb\|hog\|ia64\|icon\|'.
@@ -860,6 +870,17 @@ function s:GetFileTypeSettings(ft)
     elseif fileType == 'mail'
 	let b:ECcommentOpen = '>'
 	let b:ECcommentClose = ''
+
+		" I learned about the commentstring option. Let's use it.
+		" For now we ignore it, if it is "/*%s*/". This is the
+		" default. We cannot check wether this is default or C or
+		" something other like CSS, etc. We have to wait, until the
+		" filetypes adopt this option.
+	elseif &commentstring != "/*%s*/" && !b:ECuseSyntax
+		let b:ECcommentOpen =
+					\ substitute(&commentstring, '%s.*', "", "")
+		let b:ECcommentClose =
+					\ substitute(&commentstring, '.*%s', "", "")
     endif
 
     if b:ECuseCommentsOp
@@ -1440,7 +1461,7 @@ function s:TabsToSpaces(str)
     " FIXME: Can we use something like retab? I don't think so,
     " because retab changes every whitespace in the line, but we
     " wan't to modify only the leading spaces. Is this a problem?
-    while string =~ '^\( *\)\t'
+	while string =~ '^\( *\)\t'   &&   string !~ s:LookFor('commentstart')
 	let string = substitute(string, '^\( *\)\t', '\1'. s:tabConvert, "")
     endwhile
 
