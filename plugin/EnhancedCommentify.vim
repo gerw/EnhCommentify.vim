@@ -413,16 +413,14 @@ let s:overrideEmptyLines = 0
 let s:emptyLines = 'no'
 let s:maxLen = 0
 
-function EnhancedCommentifyInitBuffer()
+" Initalization
+function s:EnhancedCommentifyInitBuffer()
     if !exists("b:ECdidBufferInit")
 	call s:InitScriptVariables("b")
 
 	if !exists("b:EnhCommentifyFallbackTest")
 	    let b:EnhCommentifyFallbackTest = 0
 	endif
-
-	call s:GetFileTypeSettings(&ft)
-	call s:CheckPossibleEmbedding(&ft)
 
 	"
 	" If the filetype is not supported and the user wants us to, we do not
@@ -435,11 +433,19 @@ function EnhancedCommentifyInitBuffer()
 	endif
 
 	let b:ECdidBufferInit = 1
-	let b:ECsyntax = &ft
     endif
 endfunction
 
-autocmd BufWinEnter,BufNewFile  *	call EnhancedCommentifyInitBuffer()
+" Choose settings according to FileType
+function s:EnhancedCommentifyUpdateFiletype()
+    call s:GetFileTypeSettings(&ft)
+    call s:CheckPossibleEmbedding(&ft)
+    let b:ECsyntax = &ft
+endfunction
+
+" Set up autocommands
+autocmd BufWinEnter,BufNewFile,FileType  *	call s:EnhancedCommentifyInitBuffer()
+autocmd FileType * call s:EnhancedCommentifyUpdateFiletype()
 
 "
 " EnhancedCommentify(emptyLines, action, ...)
